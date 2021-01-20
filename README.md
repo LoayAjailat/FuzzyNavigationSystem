@@ -1,6 +1,4 @@
-# Robotics
-
-# Fuzzy Logic System
+# Robotics - Fuzzy Logic System
 
 ## Aims & Objectives
 The project aims to design a Fuzzy logic system capable of driving the Pioneer 3-DX intelligent mobile robot using the ARIA API. The robot's objectives are (in order of importance):
