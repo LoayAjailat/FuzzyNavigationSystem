@@ -79,25 +79,36 @@ void GetMidPoints()
 
 double Defuzzify(vector<double> &fs, int* rules, int size) 
 {
-	double result = 0, v = 0;
+	double fuzzyVel = 0, velocity = 0, sumOfDegrees = 0.0, result = 0.0;
 
 	double arr[3] = { midSlow, midMedium, midFast };
 
 	for (int i = 0; i < size; i++) {
-		v = arr[rules[i]];
-		result = result + fs[i] * v;
+		// Select speed of rule
+		velocity = arr[rules[i]];
+		// Calculate the sum of fuzzified values
+		fuzzyVel = fuzzyVel + fs[i] * velocity;
+		// Calculate the sum of membership degrees
+		sumOfDegrees = sumOfDegrees + fs[i];
 	}
+
+	// Defuzzify values
+	result = fuzzyVel / sumOfDegrees;
+	
 	return result;
 }
 
 vector<double> CalcFiringStrength(double* dist, MembershipFunction* Sets[], int numSensors, int numSets)
 {
+	//// TODO: HAVE CHECKS FOR SIZES HERE OR OUTSIDE
+
 	int numDegrees = numSensors * numSets;
 	int numResults = (int)pow(numSets, numSensors);
 
 	vector<double> fs(numResults); // why vector double? Fix
 	vector<double> memDegrees(numDegrees);
 
+	// Calculates the membership degrees of the sensors
 	int count = 0;
 	for (int m = 0; m < numSets; m++) {
 		for (int n = 0; n < numSensors; n++) {
@@ -105,7 +116,7 @@ vector<double> CalcFiringStrength(double* dist, MembershipFunction* Sets[], int 
 			count++;
 		}
 	}
-	//// TODO: HAVE CHECKS FOR SIZES
+	// Calculate the firing strength of each rule
 	count = 0;
 	for (int k = 0; k < numDegrees; k+=2) {
 		for (int j = 1; j < numDegrees; j+=2) {
@@ -117,8 +128,6 @@ vector<double> CalcFiringStrength(double* dist, MembershipFunction* Sets[], int 
 	return fs;
 }
 
-//double CalcFiringStrength{};
-
 int main()
 {
 	SetParameters();
@@ -128,16 +137,47 @@ int main()
 										mf_Slow, mf_Medium, mf_Fast,
 										mf_OA, mf_RE, mf_GS };
 
-	double dists[2] = { 105,570 };
-	vector<double> fs = CalcFiringStrength(dists, FuzzySet, 2, 3);
-	cout << fs[1] << endl;
+	MembershipFunction* DistanceSets[3]  = { FuzzySet[0], FuzzySet[1], FuzzySet[2] };
+	MembershipFunction* SpeedSets[3]	 = { FuzzySet[3], FuzzySet[4], FuzzySet[5] };
+	MembershipFunction* ObjectiveSets[3] = { FuzzySet[6], FuzzySet[7], FuzzySet[8] };
 
-	int size1 = sizeof(RE_L) / sizeof(RE_L[0]);
+	//DUMMY DATA
+	// get sonar readings
+	double sonarRange[8] = { 0, 0, 400, 400, 500, 600, 300, 500 };
+
+	double sonar7 = sonarRange[7];
+	double sonar6 = sonarRange[6];
+	double sonar5 = sonarRange[5];
+	double sonar4 = sonarRange[4];
+	double sonar3 = sonarRange[3];
+	double sonar2 = sonarRange[2];
+	double sonarFront = min(sonar3, sonar4);
+
+	double RE_sensors[2] = { sonar6, sonar7 };
+	double OA_sensors[3] = { sonar2, sonarFront, sonar5 };
+
+	int numSets = sizeof(DistanceSets) / sizeof(DistanceSets[0]);
+	int numSensors = sizeof(RE_sensors) / sizeof(RE_sensors[0]);
+	vector<double> fs = CalcFiringStrength(RE_sensors, DistanceSets, numSensors, numSets);
+	
+	for (int i = 0; i < fs.size(); i++)
+		cout << i << ": " << fs[i] << endl;
+
+	int size1 = sizeof(RE_R) / sizeof(RE_R[0]);
 	int size2 = fs.size();
 
-	if (size1 == size2)
+	if (size1 == size2) //Check if the size of both arrays match
 	{
-		double r = Defuzzify(fs, RE_L, size1);
-		cout << "Def " << r << endl;
+		double rightVel = Defuzzify(fs, RE_R, size1);
+		cout << "Right wheel velocity: " << rightVel << endl;
 	}
+
+	size1 = sizeof(RE_L) / sizeof(RE_L[0]);
+
+	if (size1 == size2) //Check if the size of both arrays match
+	{
+		double leftVel = Defuzzify(fs, RE_L, size1);
+		cout << "Left wheel velocity: " << leftVel << endl;
+	}
+
 }
