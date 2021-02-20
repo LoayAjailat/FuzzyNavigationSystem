@@ -26,5 +26,8 @@
     <ClInclude Include="MembershipFunction.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FuzzyRules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

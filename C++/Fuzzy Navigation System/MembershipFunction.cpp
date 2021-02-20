@@ -10,8 +10,9 @@ void MembershipFunction::setShapeParameters(double a, double b, double c, double
 		m_PointD = d;
 	}
 
-void MembershipFunction::setType(char type)
+void MembershipFunction::defineShape(string type)
 {
+	// Type is usually "Trapezoid" or "Triangle" 
 	m_Type = type;
 }
 
@@ -26,12 +27,9 @@ bool MembershipFunction::isWithinRange(double t)
 	if ((t >= m_PointA) && (t <= m_PointD)) return true; else return false;
 }
 
-char MembershipFunction::getType(void)const { return m_Type; }
+string MembershipFunction::getType(void) const { return m_Type; }
 
-void MembershipFunction::getName() const
-{
-	cout << m_Name << endl;
-}
+string MembershipFunction::getName(void) const { return m_Name; }
 
 double MembershipFunction::calcMembershipDegree(double dist)
 {

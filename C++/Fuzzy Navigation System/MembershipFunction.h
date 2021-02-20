@@ -1,10 +1,13 @@
 #pragma once
 #include <cstddef>
+#include <string>
+using namespace std;
+
 class MembershipFunction
 {
 protected:
 	double m_PointA, m_PointB, m_PointC, m_PointD;
-	char  m_Type;
+	string m_Type;
 	char* m_Name;
 
 public:
@@ -16,11 +19,11 @@ public:
 
 	// Functions
 	void setShapeParameters(double a, double b, double c, double d);
-	void setType(char type);
+	void defineShape(string type);
 	void setName(const char* name);
 	bool isWithinRange(double t);
-	char getType(void)const;
-	void getName() const;
+	string getType(void)const;
+	string getName() const;
 	double calcMembershipDegree(double dist);
 	double calcMidPoint();
 };
