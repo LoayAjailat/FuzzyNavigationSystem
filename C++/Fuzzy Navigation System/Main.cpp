@@ -128,6 +128,32 @@ vector<double> CalcFiringStrength(double* dist, MembershipFunction* Sets[], int 
 	return fs;
 }
 
+//double GetSpeeds(vector<double>& fs, int* rulesR, int* rulesL, int size) {
+//	double rightVel = 0.0, leftVel = 0.0;
+//
+//	rightVel = Defuzzify(fs, rulesR, size);
+//	cout << "Right wheel velocity: " << rightVel << endl;
+//
+//	leftVel = Defuzzify(fs, rulesL, size);
+//	cout << "Left wheel velocity: " << leftVel << endl;
+//
+//	return rightVel, leftVel;
+//}
+
+//Function to get the maximum
+double maximum(int a, int b, int c)
+{
+	double max = (a > b) ? a : b;
+	return ((max > c) ? max : c);
+}
+
+//Function to get the minimum
+double minimum(int a, int b, int c)
+{
+	double min = (a > b) ? b : a;
+	return ((min > c) ? c : min);
+}
+
 int main()
 {
 	SetParameters();
@@ -156,28 +182,50 @@ int main()
 	double RE_sensors[2] = { sonar6, sonar7 };
 	double OA_sensors[3] = { sonar2, sonarFront, sonar5 };
 
+	double rightVel_RE = 0.0, leftVel_RE = 0.0, rightVel_OA = 0.0, leftVel_OA = 0.0;
+
+	// Right Edge following
 	int numSets = sizeof(DistanceSets) / sizeof(DistanceSets[0]);
 	int numSensors = sizeof(RE_sensors) / sizeof(RE_sensors[0]);
-	vector<double> fs = CalcFiringStrength(RE_sensors, DistanceSets, numSensors, numSets);
+	vector<double> fs_RE = CalcFiringStrength(RE_sensors, DistanceSets, numSensors, numSets);
 	
-	for (int i = 0; i < fs.size(); i++)
-		cout << i << ": " << fs[i] << endl;
-
-	int size1 = sizeof(RE_R) / sizeof(RE_R[0]);
-	int size2 = fs.size();
-
-	if (size1 == size2) //Check if the size of both arrays match
-	{
-		double rightVel = Defuzzify(fs, RE_R, size1);
-		cout << "Right wheel velocity: " << rightVel << endl;
+	int a_Size = sizeof(RE_R) / sizeof(RE_R[0]);
+	int fs_Size = fs_RE.size();
+	if (a_Size == fs_Size) {
+		//Check if the size of both arrays match
+		rightVel_RE = Defuzzify(fs_RE, RE_R, a_Size);
+		leftVel_RE = Defuzzify(fs_RE, RE_L, a_Size);
 	}
 
-	size1 = sizeof(RE_L) / sizeof(RE_L[0]);
+	// Obstacle avoidance
+	numSensors = sizeof(OA_sensors) / sizeof(OA_sensors[0]);
+	vector<double> fs_OA = CalcFiringStrength(OA_sensors, DistanceSets, numSensors, numSets);
 
-	if (size1 == size2) //Check if the size of both arrays match
-	{
-		double leftVel = Defuzzify(fs, RE_L, size1);
-		cout << "Left wheel velocity: " << leftVel << endl;
+	a_Size = sizeof(OA_R) / sizeof(OA_R[0]);
+	fs_Size = fs_OA.size();
+	if (a_Size == fs_Size) {
+		//Check if the size of both arrays match
+		rightVel_OA = Defuzzify(fs_OA, OA_R, a_Size);
+		leftVel_OA = Defuzzify(fs_OA, OA_L, a_Size);
 	}
 
+	cout << "RE Velocity: " << rightVel_RE << " & " << leftVel_RE << endl;
+	cout << "OA Velocity: " << rightVel_OA << " & " << leftVel_OA << endl;
+	
+	double minSensor_OA, memDegree_OA;
+	double minSensor_RE, memDegree_RE, memDegree_GS;
+
+	minSensor_OA = minimum(sonar5, sonarFront, sonar2);
+	memDegree_OA = ObjectiveSets[0]->calcMembershipDegree(minSensor_OA);
+
+	minSensor_RE = min(sonar6, sonar7);
+	memDegree_RE = ObjectiveSets[1]->calcMembershipDegree(minSensor_RE);
+	memDegree_GS = ObjectiveSets[2]->calcMembershipDegree(minSensor_RE);
+	memDegree_RE = max(memDegree_RE, memDegree_GS) * 0.8;
+
+	double leftVelFinal = (memDegree_OA * leftVel_OA + memDegree_RE * leftVel_RE) / (memDegree_OA + memDegree_RE);
+	double rightVelFinal = (memDegree_OA * rightVel_OA + memDegree_RE * rightVel_RE) / (memDegree_OA + memDegree_RE);
+
+	cout << "OA: " << memDegree_OA << " " << "RE: " << memDegree_RE << endl;
+	cout << "Left: " << leftVelFinal << " " << "Right: " << rightVelFinal << endl;
 }
