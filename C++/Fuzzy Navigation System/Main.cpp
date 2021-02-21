@@ -1,8 +1,9 @@
 #include "MembershipFunction.h"
 #include "FuzzyRules.h"
+#include "FuzzyCalculations.h"
 #include <iostream>
 #include <vector>
-#include <algorithm>    // std::transform
+#include <algorithm>
 
 using namespace std;
 
@@ -12,17 +13,17 @@ using namespace std;
 
 // Distance membership functions
 ///////WHY ARE WE USING * TO DEFINE
-MembershipFunction* mf_Close = new MembershipFunction();
-MembershipFunction* mf_Ideal = new MembershipFunction();
-MembershipFunction* mf_Far = new MembershipFunction();
+MembershipFunction* mf_Close  = new MembershipFunction();
+MembershipFunction* mf_Ideal  = new MembershipFunction();
+MembershipFunction* mf_Far	  = new MembershipFunction();
 // Speed membership functions
-MembershipFunction* mf_Slow = new MembershipFunction();
+MembershipFunction* mf_Slow	  = new MembershipFunction();
 MembershipFunction* mf_Medium = new MembershipFunction();
-MembershipFunction* mf_Fast = new MembershipFunction();
+MembershipFunction* mf_Fast   = new MembershipFunction();
 // Objectives membership functions
-MembershipFunction* mf_OA = new MembershipFunction(); // Obstacle Avoidance
-MembershipFunction* mf_RE = new MembershipFunction(); // Right-edge seeking
-MembershipFunction* mf_GS = new MembershipFunction(); // Goal-seeking
+MembershipFunction* mf_OA	  = new MembershipFunction(); // Obstacle Avoidance
+MembershipFunction* mf_RE	  = new MembershipFunction(); // Right-edge seeking
+MembershipFunction* mf_GS	  = new MembershipFunction(); // Goal-seeking
 
 double midSlow, midMedium, midFast;
 
@@ -69,6 +70,7 @@ void SetParameters()
 	mf_GS->setName("GS");
 }
 
+// Gets the midpoint between points B & C of each shape
 void GetMidPoints()
 {
 	// Gets the mid-points for the speed shapes
@@ -76,69 +78,6 @@ void GetMidPoints()
 	midMedium = mf_Ideal->calcMidPoint();
 	midFast = mf_Fast->calcMidPoint();
 }
-
-double Defuzzify(vector<double> &fs, int* rules, int size) 
-{
-	double fuzzyVel = 0, velocity = 0, sumOfDegrees = 0.0, result = 0.0;
-
-	double arr[3] = { midSlow, midMedium, midFast };
-
-	for (int i = 0; i < size; i++) {
-		// Select speed of rule
-		velocity = arr[rules[i]];
-		// Calculate the sum of fuzzified values
-		fuzzyVel = fuzzyVel + fs[i] * velocity;
-		// Calculate the sum of membership degrees
-		sumOfDegrees = sumOfDegrees + fs[i];
-	}
-
-	// Defuzzify values
-	result = fuzzyVel / sumOfDegrees;
-	
-	return result;
-}
-
-vector<double> CalcFiringStrength(double* dist, MembershipFunction* Sets[], int numSensors, int numSets)
-{
-	//// TODO: HAVE CHECKS FOR SIZES HERE OR OUTSIDE
-
-	int numDegrees = numSensors * numSets;
-	int numResults = (int)pow(numSets, numSensors);
-
-	vector<double> fs(numResults); // why vector double? Fix
-	vector<double> memDegrees(numDegrees);
-
-	// Calculates the membership degrees of the sensors
-	int count = 0;
-	for (int m = 0; m < numSets; m++) {
-		for (int n = 0; n < numSensors; n++) {
-			memDegrees[count] = Sets[m]->calcMembershipDegree(dist[n]);
-			count++;
-		}
-	}
-	// Calculate the firing strength of each rule
-	count = 0;
-	for (int k = 0; k < numDegrees; k+=2) {
-		for (int j = 1; j < numDegrees; j+=2) {
-			fs[count] = memDegrees[k] * memDegrees[j];
-			count++;
-		}
-	}
-
-	return fs;
-}
-
-//double GetSpeeds(vector<double>& fs, int* rulesR, int* rulesL, int size) {
-//	double rightVel = 0.0, leftVel = 0.0;
-//
-//	rightVel = Defuzzify(fs, rulesR, size);
-//	cout << "Right wheel velocity: " << rightVel << endl;
-//
-//	leftVel = Defuzzify(fs, rulesL, size);
-//	cout << "Left wheel velocity: " << leftVel << endl;
-//
-//	return rightVel, leftVel;
-//}
 
 //Function to get the maximum
 double maximum(int a, int b, int c)
@@ -152,6 +91,13 @@ double minimum(int a, int b, int c)
 {
 	double min = (a > b) ? b : a;
 	return ((min > c) ? c : min);
+}
+
+// Truncates the value if its equal to or exceeds the max
+void truncate(double &val, double max) 
+{
+	if (val >= max)
+		val -= 1;
 }
 
 int main()
@@ -177,36 +123,51 @@ int main()
 	double sonar4 = sonarRange[4];
 	double sonar3 = sonarRange[3];
 	double sonar2 = sonarRange[2];
+
+	truncate(sonar2, 5000);
+	truncate(sonar3, 5000);
+	truncate(sonar4, 5000);
+	truncate(sonar5, 5000);
+	truncate(sonar6, 5000);
+	truncate(sonar7, 5000);
+
+	// Check with isWithinRange function. Maybe truncate within it?
+
 	double sonarFront = min(sonar3, sonar4);
 
 	double RE_sensors[2] = { sonar6, sonar7 };
 	double OA_sensors[3] = { sonar2, sonarFront, sonar5 };
 
-	double rightVel_RE = 0.0, leftVel_RE = 0.0, rightVel_OA = 0.0, leftVel_OA = 0.0;
+	double rightVel_RE, leftVel_RE, rightVel_OA, leftVel_OA, leftVelFinal, rightVelFinal;
+	vector <double> a_midVel{ midSlow, midMedium, midFast };
 
+	FuzzyCalculations FC; // Whats the difference with --> FuzzyCalculations* FC = new FuzzyCalculations();
+	 
 	// Right Edge following
 	int numSets = sizeof(DistanceSets) / sizeof(DistanceSets[0]);
 	int numSensors = sizeof(RE_sensors) / sizeof(RE_sensors[0]);
-	vector<double> fs_RE = CalcFiringStrength(RE_sensors, DistanceSets, numSensors, numSets);
+	vector <double> md_RE = FC.CalcMemDegrees(RE_sensors, DistanceSets, numSensors, numSets);
+	vector <double> fs_RE = FC.CalcFiringStrength(RE_sensors, md_RE, numSensors, numSets);
 	
 	int a_Size = sizeof(RE_R) / sizeof(RE_R[0]);
 	int fs_Size = fs_RE.size();
 	if (a_Size == fs_Size) {
 		//Check if the size of both arrays match
-		rightVel_RE = Defuzzify(fs_RE, RE_R, a_Size);
-		leftVel_RE = Defuzzify(fs_RE, RE_L, a_Size);
+		rightVel_RE = FC.Defuzzify(fs_RE, RE_R, a_midVel, a_Size);
+		leftVel_RE = FC.Defuzzify(fs_RE, RE_L, a_midVel, a_Size);
 	}
 
 	// Obstacle avoidance
 	numSensors = sizeof(OA_sensors) / sizeof(OA_sensors[0]);
-	vector<double> fs_OA = CalcFiringStrength(OA_sensors, DistanceSets, numSensors, numSets);
+	vector <double> md_OA = FC.CalcMemDegrees(OA_sensors, DistanceSets, numSensors, numSets);
+	vector <double> fs_OA = FC.CalcFiringStrength(OA_sensors, md_OA, numSensors, numSets);
 
 	a_Size = sizeof(OA_R) / sizeof(OA_R[0]);
 	fs_Size = fs_OA.size();
 	if (a_Size == fs_Size) {
 		//Check if the size of both arrays match
-		rightVel_OA = Defuzzify(fs_OA, OA_R, a_Size);
-		leftVel_OA = Defuzzify(fs_OA, OA_L, a_Size);
+		rightVel_OA = FC.Defuzzify(fs_OA, OA_R, a_midVel, a_Size);
+		leftVel_OA = FC.Defuzzify(fs_OA, OA_L, a_midVel, a_Size);
 	}
 
 	cout << "RE Velocity: " << rightVel_RE << " & " << leftVel_RE << endl;
@@ -223,9 +184,11 @@ int main()
 	memDegree_GS = ObjectiveSets[2]->calcMembershipDegree(minSensor_RE);
 	memDegree_RE = max(memDegree_RE, memDegree_GS) * 0.8;
 
-	double leftVelFinal = (memDegree_OA * leftVel_OA + memDegree_RE * leftVel_RE) / (memDegree_OA + memDegree_RE);
-	double rightVelFinal = (memDegree_OA * rightVel_OA + memDegree_RE * rightVel_RE) / (memDegree_OA + memDegree_RE);
+	leftVelFinal = (memDegree_OA * leftVel_OA + memDegree_RE * leftVel_RE) / (memDegree_OA + memDegree_RE);
+	rightVelFinal = (memDegree_OA * rightVel_OA + memDegree_RE * rightVel_RE) / (memDegree_OA + memDegree_RE);
 
 	cout << "OA: " << memDegree_OA << " " << "RE: " << memDegree_RE << endl;
-	cout << "Left: " << leftVelFinal << " " << "Right: " << rightVelFinal << endl;
+	cout << "Right: " << rightVelFinal << " " << "Left: " << leftVelFinal << endl;
+
+	//TODO: Make some doubles as float. No need for all that precision
 }
